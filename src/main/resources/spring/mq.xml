@@ -1,0 +1,62 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<beans xmlns="http://www.springframework.org/schema/beans"
+       xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xmlns:p="http://www.springframework.org/schema/p"
+       xmlns:context="http://www.springframework.org/schema/context"
+       xmlns:mvc="http://www.springframework.org/schema/mvc"
+       xsi:schemaLocation="http://www.springframework.org/schema/beans
+                        http://www.springframework.org/schema/beans/spring-beans-3.1.xsd
+                        http://www.springframework.org/schema/context
+                        http://www.springframework.org/schema/context/spring-context-3.1.xsd
+                        http://www.springframework.org/schema/mvc
+                        http://www.springframework.org/schema/mvc/spring-mvc-4.0.xsd">
+
+<!-- 配置activemq的消息的生产方 -->
+    <!-- 配置连接工厂 -->
+    <bean id="activeMQConnectionFactory" class="org.apache.activemq.ActiveMQConnectionFactory">
+        <!-- 配置消息服务中间件地址 -->
+        <property name="brokerURL" value="tcp://192.168.8.35:61616"/>
+
+        <!-- 配置用户名和密码 -->
+        <property name="userName" value="admin" />
+        <property name="password" value="admin" />
+    </bean>
+
+    <!-- 配置工厂连接池 -->
+    <bean id="pooledConnectionFactoryBean" class="org.apache.activemq.pool.PooledConnectionFactoryBean">
+        <!-- 注入连接工厂bean -->
+        <property name="connectionFactory" ref="activeMQConnectionFactory" />
+    </bean>
+
+    <!-- 使用spring来进行管理 -->
+    <bean id="singleConnectionFactory"
+          class="org.springframework.jms.connection.SingleConnectionFactory">
+
+        <!-- 注入连接工厂连接池的bean -->
+        <property name="targetConnectionFactory" ref="pooledConnectionFactoryBean" />
+    </bean>
+
+    <!-- 配置JmsTemplate -->
+    <bean id="jmsTemplate" class="org.springframework.jms.core.JmsTemplate">
+        <!-- 注入使用spring来进行管理的bean -->
+        <property name="connectionFactory" ref="singleConnectionFactory"/>
+
+        <!-- 设置发布订阅模式，默认为点对点模式 (value=false) -->
+        <property name="pubSubDomain" value="true"/>
+    </bean>
+
+        <!--配置监听MQ方-->
+    <!-- 定义消息队列topic类型，queue的方式差不多 -->
+    <bean id="topic" class="org.apache.activemq.command.ActiveMQTopic">
+        <!-- 定义名称 -->
+        <constructor-arg index="0" value="topic"/>
+    </bean>
+
+    <!-- 监听方式，这种方式更实用，可以一直监听消息 -->
+    <bean id="myMessageListener" class="com.MyMessageListener"/>
+    <bean id="defaultMessageListenerContainer" class="org.springframework.jms.listener.DefaultMessageListenerContainer">
+        <property name="connectionFactory" ref="pooledConnectionFactoryBean"/>
+        <!-- 注册activemq名称 -->
+        <property name="destination" ref="topic"/>
+        <property name="messageListener" ref="myMessageListener"/>
+    </bean>
+</beans>
